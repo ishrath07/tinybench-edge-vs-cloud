@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cost per Million Tokens — Edge vs Cloud</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg: #12161A;
+    --panel: #181D22;
+    --panel-line: #262D34;
+    --text: #EDEAE3;
+    --text-dim: #8A94A0;
+    --text-faint: #5B6470;
+    --edge: #4FD1C5;
+    --edge-dim: rgba(79, 209, 197, 0.14);
+    --cloud: #F0A857;
+    --cloud-dim: rgba(240, 168, 87, 0.14);
+    --thermal: #E8654A;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  .stage {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 56px 48px 40px;
+  }
+
+  .mono {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  header {
+    margin-bottom: 44px;
+  }
+
+  .kicker {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text-faint);
+    letter-spacing: 0.02em;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.28;
+    margin: 0 0 12px;
+    max-width: 560px;
+    letter-spacing: -0.01em;
+  }
+
+  .sub {
+    font-size: 15px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    max-width: 520px;
+  }
+
+  /* ---- chart ---- */
+
+  .chart-panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    padding: 36px 40px 28px;
+    position: relative;
+  }
+
+  .axis {
+    position: relative;
+    height: 22px;
+    margin-left: 178px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--panel-line);
+  }
+
+  .axis-tick {
+    position: absolute;
+    bottom: 0;
+    transform: translateX(-50%);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-faint);
+    padding-bottom: 6px;
+  }
+
+  .axis-tick::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    width: 1px;
+    height: 6px;
+    background: var(--panel-line);
+  }
+
+  .rows {
+    position: relative;
+    margin-left: 178px;
+  }
+
+  .gridline {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--panel-line);
+    opacity: 0.6;
+  }
+
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 52px;
+  }
+
+  .row-label {
+    position: absolute;
+    left: -178px;
+    width: 158px;
+    text-align: right;
+    padding-right: 20px;
+    font-size: 13.5px;
+    line-height: 1.35;
+    color: var(--text);
+  }
+
+  .row-label .tag {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-faint);
+    margin-top: 2px;
+  }
+
+  .bar-track {
+    position: relative;
+    height: 22px;
+    width: 100%;
+  }
+
+  .bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .bar.edge { background: var(--edge); }
+  .bar.cloud { background: var(--cloud); }
+
+  .bar-value {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .bar-value.on-dark { color: #0E1013; padding-right: 10px; right: 0; }
+  .bar-value.off-bar { color: var(--text); padding-left: 10px; }
+
+  /* thermal row */
+  .thermal-row .bar-track {
+    display: flex;
+    align-items: center;
+  }
+  .thermal-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--thermal);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+  }
+  .thermal-dash {
+    width: 46px;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, var(--thermal) 0 6px, transparent 6px 11px);
+  }
+
+  /* bracket annotation */
+  .bracket-wrap {
+    margin-left: 178px;
+    position: relative;
+    height: 46px;
+    margin-top: 4px;
+  }
+  .bracket {
+    position: absolute;
+    top: 6px;
+    height: 22px;
+    border-left: 1px solid var(--text-faint);
+    border-right: 1px solid var(--text-faint);
+    border-bottom: 1px solid var(--text-faint);
+    border-radius: 0 0 4px 4px;
+  }
+  .bracket-label {
+    position: absolute;
+    top: 30px;
+    transform: translateX(-50%);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .bracket-label b { color: var(--text); font-weight: 600; }
+
+  .legend {
+    display: flex;
+    gap: 26px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--panel-line);
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; }
+  .swatch.edge { background: var(--edge); }
+  .swatch.cloud { background: var(--cloud); }
+  .swatch.thermal { background: transparent; border: 1.5px dashed var(--thermal); }
+
+  /* ---- secondary strip: tokens/watt ---- */
+
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--panel-line);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 22px;
+  }
+  .strip-cell {
+    background: var(--panel);
+    padding: 20px 22px;
+  }
+  .strip-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  .strip-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 21px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .strip-value span {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+
+  footer {
+    margin-top: 26px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text-faint);
+    max-width: 640px;
+  }
+  footer .src { color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <header>
+    <div class="kicker mono">TinyBench sustained-load data, reframed</div>
+    <h1>Electricity is a rounding error. The 28x gap is renting the compute at all.</h1>
+    <div class="sub">Cost per million tokens, computed from TinyBench's own published throughput and power figures — run locally on electricity vs. rented in the cloud.</div>
+  </header>
+
+  <div class="chart-panel">
+
+    <div class="axis">
+      <div class="axis-tick" style="left:0%">$0.001</div>
+      <div class="axis-tick" style="left:33.3%">$0.01</div>
+      <div class="axis-tick" style="left:66.7%">$0.1</div>
+      <div class="axis-tick" style="left:100%">$1.00</div>
+    </div>
+
+    <div class="rows">
+      <div class="gridline" style="left:0%"></div>
+      <div class="gridline" style="left:33.3%"></div>
+      <div class="gridline" style="left:66.7%"></div>
+      <div class="gridline" style="left:100%"></div>
+
+      <div class="row">
+        <div class="row-label">RTX 4050 (laptop)<span class="tag">local — electricity only</span></div>
+        <div class="bar-track">
+          <div class="bar edge" style="width:24.1%">
+            <span class="bar-value on-dark">$0.0053</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">Hailo-10H NPU<span class="tag">local — electricity only</span></div>
+        <div class="bar-track">
+          <div class="bar edge" style="width:25.9%">
+            <span class="bar-value on-dark">$0.0060</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">iPhone 16 Pro<span class="tag">local — power est., flagged</span></div>
+        <div class="bar-track">
+          <div class="bar edge" style="width:26.9%">
+            <span class="bar-value on-dark">$0.0064</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row thermal-row">
+        <div class="row-label">Galaxy S24 Ultra<span class="tag">thermal cutoff — no valid rate</span></div>
+        <div class="bar-track">
+          <div class="thermal-mark" style="margin-left:2%">
+            <span class="thermal-dash"></span>
+            hard-floored before a sustained rate exists
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">RTX 4050-class<span class="tag">rented — cloud, $0.07/hr</span></div>
+        <div class="bar-track">
+          <div class="bar cloud" style="width:72.3%">
+            <span class="bar-value on-dark">$0.1476</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bracket-wrap">
+      <div class="bracket" style="left:24.1%; width:calc(72.3% - 24.1%)"></div>
+      <div class="bracket-label" style="left:48.2%"><b>~28x</b> cost gap — same model, same tokens, only the meter changed</div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="swatch edge"></span>Runs on local power</div>
+      <div class="legend-item"><span class="swatch cloud"></span>Rented compute</div>
+      <div class="legend-item"><span class="swatch thermal"></span>No valid sustained rate</div>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="strip-cell">
+      <div class="strip-label">RTX 4050</div>
+      <div class="strip-value">3.86<span>tok/watt</span></div>
+    </div>
+    <div class="strip-cell">
+      <div class="strip-label">Hailo-10H NPU</div>
+      <div class="strip-value">3.45<span>tok/watt</span></div>
+    </div>
+    <div class="strip-cell">
+      <div class="strip-label">iPhone 16 Pro (est.)</div>
+      <div class="strip-value">3.23<span>tok/watt</span></div>
+    </div>
+  </div>
+
+  <footer>
+    Tokens/watt lands within a narrow 3.2–3.9 band across all three edge platforms — power efficiency barely differentiates them. The deployment decision is really about hardware capex and thermal endurance, not watts: <span class="src">the Galaxy S24 Ultra couldn't produce a valid sustained-rate data point at all — without active cooling, it isn't a viable always-on inference platform, full stop. That's a sharper deployment verdict than any efficiency number on this chart.</span><br><br>
+    RTX 4050 &amp; Hailo-10H figures: TinyBench, measured. iPhone 16 Pro power: estimated from third-party sustained-load chip benchmarks, flagged. Cloud rate: RTX 4060-class, nearest live-rentable proxy (RTX 4050 is laptop-only, not a datacenter SKU). Electricity: BESCOM Bengaluru domestic tariff, ~$0.074/kWh. All figures converted at ₹95/USD.
+  </footer>
+
+</div>
+</body>
+</html>
